@@ -4,8 +4,10 @@ import cors from 'cors';
 const app = express();
 const port = process.env.PORT || 3001;
 
-app.use(bodyParser.json());
+// Enable CORS for all routes
+app.use(cors());
 
+app.use(bodyParser.json());
 
 app.get("/", (req, res) => res.type('html').send(html));
 
@@ -14,38 +16,62 @@ const server = app.listen(port, () => console.log(`Example app listening on port
 server.keepAliveTimeout = 120 * 1000;
 server.headersTimeout = 120 * 1000;
 
-const sessions = [""];
+// Array to store game sessions
+let sessions = []; 
 
-// Endpoint to create a new session
-app.post('/api/session', (req, res) => {
-    const newSession = {
-      id: sessions.length + 1,
-      players: [req.body.player], // The first player joins the session
-    };
+// Function to generate a unique session ID
+const generateSessionId = () => {
+    return sessions.length + 1;
+  };
   
+  // Endpoint to create a new session
+  app.post('/api/session', (req, res) => {
+    const newSession = {
+      id: generateSessionId(),
+      startDate: new Date(),
+      players: [],
+    };
     sessions.push(newSession);
     res.json(newSession);
   });
+
+// Clear all sessions
+app.delete('/api/sessions/clear', (req, res) => {
+    try {
+      sessions = [];
+      res.json({ message: 'All sessions cleared successfully.' });
+    } catch (error) {
+      console.error('Error clearing sessions:', error);
+      res.status(500).json({ error: 'Internal Server Error' });
+    }
+  });
+
+
+  // Endpoint to get available sessions
+  app.get('/api/sessions', (req, res) => {
+    res.json(sessions);
+  });
   
-  // Endpoint to join an existing session
-  app.post('/api/session/:id/join', (req, res) => {
-    const sessionId = parseInt(req.params.id);
+  // Endpoint to join a session
+  app.post('/api/session/:sessionId/join', (req, res) => {
+    const sessionId = parseInt(req.params.sessionId);
+    const playerName = req.body.player;
+  
     const session = sessions.find((s) => s.id === sessionId);
   
     if (!session) {
       return res.status(404).json({ error: 'Session not found' });
     }
   
-    // Check if the session is full (you may adjust this based on your requirements)
     if (session.players.length >= 3) {
       return res.status(400).json({ error: 'Session is full' });
     }
   
-    // Add the new player to the session
-    session.players.push(req.body.player);
+    session.players.push({ name: playerName, id: session.players.length + 1, joinedAt: new Date() });
   
     res.json(session);
   });
+
 
 const html = `
 <!DOCTYPE html>
