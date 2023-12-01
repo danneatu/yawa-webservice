@@ -1,50 +1,51 @@
-// server.mjs (or server.js if using Node.js 14+ with ESM support)
-
 import express from 'express';
 import bodyParser from 'body-parser';
 import cors from 'cors';
-
 const app = express();
-const PORT = 3001;
+const port = process.env.PORT || 3001;
 
-app.use(cors());
 app.use(bodyParser.json());
 
-const sessions = [];
 
 app.get("/", (req, res) => res.type('html').send(html));
 
+const server = app.listen(port, () => console.log(`Example app listening on port ${port}!`));
+
+server.keepAliveTimeout = 120 * 1000;
+server.headersTimeout = 120 * 1000;
+
+const sessions = [""];
+
+// Endpoint to create a new session
 app.post('/api/session', (req, res) => {
-  const newSession = {
-    id: sessions.length + 1,
-    players: [req.body.player],
-    gameState: 'initialized',
-  };
-  console.log(newSession)
-  sessions.push(newSession);
-  res.json(newSession);
-});
-
-app.get('/api/session/:id', (req, res) => {
-  const sessionId = parseInt(req.params.id);
-  const session = sessions.find((s) => s.id === sessionId);
-  res.json(session);
-});
-
-app.post('/api/session/:id/join', (req, res) => {
-  const sessionId = parseInt(req.params.id);
-  const session = sessions.find((s) => s.id === sessionId);
-  if (session) {
+    const newSession = {
+      id: sessions.length + 1,
+      players: [req.body.player], // The first player joins the session
+    };
+  
+    sessions.push(newSession);
+    res.json(newSession);
+  });
+  
+  // Endpoint to join an existing session
+  app.post('/api/session/:id/join', (req, res) => {
+    const sessionId = parseInt(req.params.id);
+    const session = sessions.find((s) => s.id === sessionId);
+  
+    if (!session) {
+      return res.status(404).json({ error: 'Session not found' });
+    }
+  
+    // Check if the session is full (you may adjust this based on your requirements)
+    if (session.players.length >= 3) {
+      return res.status(400).json({ error: 'Session is full' });
+    }
+  
+    // Add the new player to the session
     session.players.push(req.body.player);
+  
     res.json(session);
-  } else {
-    res.status(404).json({ error: 'Session not found' });
-  }
-});
-
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-});
+  });
 
 const html = `
 <!DOCTYPE html>
