@@ -1,8 +1,25 @@
 import express from 'express';
+import http from 'http';
 import bodyParser from 'body-parser';
 import cors from 'cors';
+
+import Session from './session.js'; // Note the file extension
+
+import { Server } from 'socket.io';
+
 const app = express();
 const port = process.env.PORT || 3001;
+
+const server = http.createServer(app);
+const io = new Server(server);
+
+io.on('connection', (socket) => {
+  console.log('A user connected');
+});
+
+server.listen(port, () => {
+  console.log(`Server is running on port ${port}`);
+});
 
 // Enable CORS for all routes
 app.use(cors());
@@ -11,28 +28,35 @@ app.use(bodyParser.json());
 
 app.get("/", (req, res) => res.type('html').send(html));
 
-const server = app.listen(port, () => console.log(`Example app listening on port ${port}!`));
-
 server.keepAliveTimeout = 120 * 1000;
 server.headersTimeout = 120 * 1000;
 
 // Array to store game sessions
 let sessions = []; 
 
-// Function to generate a unique session ID
-const generateSessionId = () => {
-    return sessions.length + 1;
-  };
-  
   // Endpoint to create a new session
-  app.post('/api/session', (req, res) => {
-    const newSession = {
-      id: generateSessionId(),
-      startDate: new Date(),
-      players: [],
-    };
+  app.post('/api/session/start', (req, res) => {
+
+    const sessionId = sessions.length + 1;
+    const startDate = new Date();
+    const newSession = new Session(sessionId, startDate);
+
     sessions.push(newSession);
+    console.log(sessions)
     res.json(newSession);
+  });
+
+  app.post('/api/session/:id/join', (req, res) => {
+    const sessionId = parseInt(req.params.id);
+    const playerName = req.body.player;
+    const session = sessions.find((s) => s.id === sessionId);
+
+    if (session && session.canJoin()) {
+        sessions[0].addPlayer(playerName)
+        console.log("player with added with name", playerName)
+    }
+
+    return res.status(200)
   });
 
 // Clear all sessions
@@ -46,29 +70,29 @@ app.delete('/api/sessions/clear', (req, res) => {
     }
   });
 
-
   // Endpoint to get available sessions
   app.get('/api/sessions', (req, res) => {
     res.json(sessions);
   });
   
   // Endpoint to join a session
-  app.post('/api/session/:sessionId/join', (req, res) => {
-    const sessionId = parseInt(req.params.sessionId);
-    const playerName = req.body.player;
-  
+  app.post('/api/session/join', (req, res) => {
+    
+
+    const { sessionId, userName, userId } = req.body; // Extract sessionId and playerName from the request body
+    console.log("passed sessionId: ", sessionId)
+    console.log("passed userName: ", userName)
+    console.log("passed userId: ", userId)
+
     const session = sessions.find((s) => s.id === sessionId);
   
+    console.log(sessions)
+
     if (!session) {
       return res.status(404).json({ error: 'Session not found' });
     }
   
-    if (session.players.length >= 3) {
-      return res.status(400).json({ error: 'Session is full' });
-    }
-  
-    session.players.push({ name: playerName, id: session.players.length + 1, joinedAt: new Date() });
-  
+    session.players.push({ name: userName, id: userId, joinedAt: new Date() });
     res.json(session);
   });
 
