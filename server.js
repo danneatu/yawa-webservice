@@ -8,6 +8,16 @@ import Session from './session.js'; // Note the file extension
 import { Server } from 'socket.io';
 
 const app = express();
+// Enable CORS for all routes
+app.use((req, res, next) => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    res.setHeader('Access-Control-Allow-Credentials', true);
+    next();
+  });
+
+
 const port = process.env.PORT || 3001;
 
 const server = http.createServer(app);
